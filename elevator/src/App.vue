@@ -17,44 +17,57 @@
           Floor {{ totalFloors - 1 - floor }}
           <div>
             <button
-          v-if="totalFloors - 1 - floor === totalFloors - 1"
-          @click="pressButton('down', totalFloors - 1 - floor)"
-          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
-          class="btn"
-        >
-          ↓
-        </button>
-
-        <button
-          v-if="totalFloors - 1 - floor === 0"
-          @click="pressButton('up', totalFloors - 1 - floor)"
-          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
-          class="btn"
-        >
-          ↑
-        </button>
-
-        <button
-          v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
-          @click="pressButton('up', totalFloors - 1 - floor)"
-          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
-          class="btn"
-        >
-          ↑
-        </button>
-        <button
-          v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
-          @click="pressButton('down', totalFloors - 1 - floor)"
-          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
-          class="btn"
-        >
-          ↓
-        </button>
+              v-if="totalFloors - 1 - floor === totalFloors - 1"
+              @click="pressButton('down', totalFloors - 1 - floor)"
+              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
+              class="btn"
+            >
+              ↓
+            </button>
+    
+            <button
+              v-if="totalFloors - 1 - floor === 0"
+              @click="pressButton('up', totalFloors - 1 - floor)"
+              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
+              class="btn"
+            >
+              ↑
+            </button>
+    
+            <button
+              v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
+              @click="pressButton('up', totalFloors - 1 - floor)"
+              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
+              class="btn"
+            >
+              ↑
+            </button>
+            <button
+              v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
+              @click="pressButton('down', totalFloors - 1 - floor)"
+              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
+              class="btn"
+            >
+              ↓
+            </button>
           </div>
         </div>
       </div>
-
-      <div class="elevator" :style="{ bottom: elevatorPosition + 'px' }"></div>
+    
+      <!-- Elevator -->
+      <div class="elevator" @click="toggleBox" :style="{ bottom: elevatorPosition + 'px' }">
+        <!-- Box with floor buttons -->
+        <div v-if="isBoxVisible" class="floor-box">
+          <button
+            v-for="floor in [...Array(totalFloors).keys()]"
+            :key="floor"
+            @click="goToFloor(floor)"
+            class="floor-btn"
+          >
+            Floor {{ floor }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <audio ref="elevatorSound" src="/grrr.mp3" preload="auto" />
@@ -65,7 +78,7 @@
 import { ref } from 'vue'
 
 const totalFloors = 5
-const floorHeight = 100
+// const floorHeight = 100
 const currentFloor = ref(0)
 const elevatorPosition = ref(0)
 const elevatorSound = ref(null)
@@ -90,27 +103,32 @@ function pressButton(dir, floor) {
   }
 }
 
-function moveToFloor(floor) {
-  currentFloor.value = floor;
-  elevatorPosition.value = floor * floorHeight;
+const isBoxVisible = ref(false); // Tracks whether the box is visible
+
+function toggleBox() {
+  isBoxVisible.value = !isBoxVisible.value; // Correctly toggle the visibility of the box
+}
+
+function goToFloor(floor) {
+  currentFloor.value = floor; // Update the current floor
+  elevatorPosition.value = floor * 100; // Update the elevator's position (assuming each floor is 100px apart)
+
+  // Play elevator sound if available
+  if (elevatorSound.value) {
+    elevatorSound.value.currentTime = 0;
+    elevatorSound.value.play().catch(err => console.warn('Autoplay blocked:', err));
+  }
 
   // Reset button states for the current floor
   buttonStates.value[floor].up = false;
   buttonStates.value[floor].down = false;
 
-  if (elevatorSound.value) {
-    elevatorSound.value.currentTime = 0;
-    elevatorSound.value.play().catch(err => console.warn('Autoplay blocked:', err));
-  }
+  // Close the box after selecting a floor
+  isBoxVisible.value = false;
+
+  // Remove the floor from the request queue
+  floorRequests.value = floorRequests.value.filter(f => f !== floor);
 }
-
-// function hasUpRequestsAbove(currFloor) {
-//   return floorRequests.value.some(floor => floor > currFloor);
-// }
-
-// function hasDownRequestsBelow(currFloor) {
-//   return floorRequests.value.some(floor => floor < currFloor);
-// }
 
 function getCurrentDirection() {
   // Determine the current direction based on the next request in the queue
@@ -129,7 +147,7 @@ function simulateElevator() {
     if (dir === 1) { // Moving up
       for (let i = currFloor + 1; i < totalFloors; i++) {
         if (floorRequests.value.includes(i)) {
-          moveToFloor(i); // Move to the next requested floor
+          goToFloor(i); // Move to the next requested floor
           floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
           break; // Stop after serving one floor
         }
@@ -137,7 +155,7 @@ function simulateElevator() {
     } else if (dir === -1) { // Moving down
       for (let i = currFloor - 1; i >= 0; i--) {
         if (floorRequests.value.includes(i)) {
-          moveToFloor(i); // Move to the next requested floor
+          goToFloor(i); // Move to the next requested floor
           floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
           break; // Stop after serving one floor
         }
@@ -221,5 +239,37 @@ function startElevator() {
   border-radius: 8px;
   transition: bottom 1s ease-in-out;
   z-index: 10;
+}
+
+.floor-box {
+  position: absolute;
+  bottom: 100%; /* Position the box above the elevator */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.floor-btn {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  margin: 5px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100px;
+  text-align: center;
+}
+
+.floor-btn:hover {
+  background-color: #1976d2;
 }
 </style>
