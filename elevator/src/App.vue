@@ -104,13 +104,13 @@ function moveToFloor(floor) {
   }
 }
 
-function hasUpRequestsAbove(currFloor) {
-  return floorRequests.value.some(floor => floor > currFloor);
-}
+// function hasUpRequestsAbove(currFloor) {
+//   return floorRequests.value.some(floor => floor > currFloor);
+// }
 
-function hasDownRequestsBelow(currFloor) {
-  return floorRequests.value.some(floor => floor < currFloor);
-}
+// function hasDownRequestsBelow(currFloor) {
+//   return floorRequests.value.some(floor => floor < currFloor);
+// }
 
 function getCurrentDirection() {
   // Determine the current direction based on the next request in the queue
@@ -127,45 +127,24 @@ function simulateElevator() {
     const currFloor = currentFloor.value;
 
     if (dir === 1) { // Moving up
-      if (hasUpRequestsAbove(currFloor)) {
-        // Serve all "up" requests above the current floor
-        for (let i = currFloor + 1; i < totalFloors; i++) {
-          if (floorRequests.value.includes(i)) {
-            moveToFloor(i);
-            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
-          }
-        }
-      } else if (hasDownRequestsBelow(currFloor)) {
-        // Switch to "down" direction and serve all "down" requests
-        for (let i = currFloor - 1; i >= 0; i--) {
-          if (floorRequests.value.includes(i)) {
-            moveToFloor(i);
-            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
-          }
+      for (let i = currFloor + 1; i < totalFloors; i++) {
+        if (floorRequests.value.includes(i)) {
+          moveToFloor(i); // Move to the next requested floor
+          floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          break; // Stop after serving one floor
         }
       }
     } else if (dir === -1) { // Moving down
-      if (hasDownRequestsBelow(currFloor)) {
-        // Serve all "down" requests below the current floor
-        for (let i = currFloor - 1; i >= 0; i--) {
-          if (floorRequests.value.includes(i)) {
-            moveToFloor(i);
-            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
-          }
-        }
-      } else if (hasUpRequestsAbove(currFloor)) {
-        // Switch to "up" direction and serve all "up" requests
-        for (let i = currFloor + 1; i < totalFloors; i++) {
-          if (floorRequests.value.includes(i)) {
-            moveToFloor(i);
-            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
-          }
+      for (let i = currFloor - 1; i >= 0; i--) {
+        if (floorRequests.value.includes(i)) {
+          moveToFloor(i); // Move to the next requested floor
+          floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          break; // Stop after serving one floor
         }
       }
     }
   }, 3000); // Keep the interval for animation timing
 }
-
 function startElevator() {
   started.value = true
   simulateElevator()
@@ -195,7 +174,7 @@ function startElevator() {
 
 .elevator-shaft {
   position: relative;
-  width: 200px;
+  width: 300px; /* Increase the width to make it broader */
   height: 500px;
   border: 3px solid #444;
   margin: 30px auto;
@@ -234,8 +213,9 @@ function startElevator() {
 
 .elevator {
   position: absolute;
-  left: 20%;
-  width: 60%;
+  left: 50%; /* Position the elevator at the horizontal center of the parent */
+  transform: translateX(-50%); /* Adjust to truly center it */
+  width: 40%;
   height: 80px;
   background-color: #4caf50;
   border-radius: 8px;
