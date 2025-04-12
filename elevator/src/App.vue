@@ -90,21 +90,19 @@ function moveToFloor(floor) {
 
 function simulateElevator() {
   setInterval(() => {
-    if (floorRequests.value.length === 0) return
+    if (floorRequests.value.length === 0) return;
 
-    const targetFloor = floorRequests.value[0]
-    if (currentFloor.value < targetFloor) {
-      currentFloor.value += 1
-    } else if (currentFloor.value > targetFloor) {
-      currentFloor.value -= 1
-    }
+    const targetFloor = floorRequests.value[0];
 
-    moveToFloor(currentFloor.value)
+    // Move directly to the target floor
+    currentFloor.value = targetFloor;
+    moveToFloor(currentFloor.value);
 
+    // Remove the floor from the queue once reached
     if (currentFloor.value === targetFloor) {
-      floorRequests.value.shift()
+      floorRequests.value.shift();
     }
-  }, 3000)
+  }, 3000); // Keep the interval for animation timing
 }
 
 function startElevator() {
