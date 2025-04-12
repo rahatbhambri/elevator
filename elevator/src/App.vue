@@ -16,39 +16,40 @@
           <!-- Display correct floor numbering, where 0 is at the bottom and 4 is at the top -->
           Floor {{ totalFloors - 1 - floor }}
           <div>
-            <!-- For the topmost floor (Floor 4), only Down button -->
             <button
-              v-if="totalFloors - 1 - floor === totalFloors - 1"
-              @click="pressButton('down', totalFloors - 1 - floor)"
-              class="btn"
-            >
-              ↓
-            </button>
+          v-if="totalFloors - 1 - floor === totalFloors - 1"
+          @click="pressButton('down', totalFloors - 1 - floor)"
+          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
+          class="btn"
+        >
+          ↓
+        </button>
 
-            <!-- For the bottommost floor (Floor 0), only Up button -->
-            <button
-              v-if="totalFloors - 1 - floor === 0"
-              @click="pressButton('up', totalFloors - 1 - floor)"
-              class="btn"
-            >
-              ↑
-            </button>
+        <button
+          v-if="totalFloors - 1 - floor === 0"
+          @click="pressButton('up', totalFloors - 1 - floor)"
+          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
+          class="btn"
+        >
+          ↑
+        </button>
 
-            <!-- For intermediate floors, show both Up and Down buttons -->
-            <button
-              v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
-              @click="pressButton('up', totalFloors - 1 - floor)"
-              class="btn"
-            >
-              ↑
-            </button>
-            <button
-              v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
-              @click="pressButton('down', totalFloors - 1 - floor)"
-              class="btn"
-            >
-              ↓
-            </button>
+        <button
+          v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
+          @click="pressButton('up', totalFloors - 1 - floor)"
+          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
+          class="btn"
+        >
+          ↑
+        </button>
+        <button
+          v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
+          @click="pressButton('down', totalFloors - 1 - floor)"
+          :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
+          class="btn"
+        >
+          ↓
+        </button>
           </div>
         </div>
       </div>
@@ -71,36 +72,96 @@ const elevatorSound = ref(null)
 const started = ref(false)
 
 const floorRequests = ref([])
+const buttonStates = ref(
+  Array.from({ length: totalFloors }, () => ({ up: false, down: false }))
+);
 
 function pressButton(dir, floor) {
   if (!floorRequests.value.includes(floor)) {
-    floorRequests.value.push(floor)
-    floorRequests.value.sort((a, b) => a - b) // keep sorted
+    floorRequests.value.push(floor);
+    floorRequests.value.sort((a, b) => a - b); // Keep sorted
+  }
+
+  // Mark the button as pressed
+  if (dir === 'up') {
+    buttonStates.value[floor].up = true;
+  } else if (dir === 'down') {
+    buttonStates.value[floor].down = true;
   }
 }
 
 function moveToFloor(floor) {
-  currentFloor.value = floor
-  elevatorPosition.value = floor * floorHeight
+  currentFloor.value = floor;
+  elevatorPosition.value = floor * floorHeight;
+
+  // Reset button states for the current floor
+  buttonStates.value[floor].up = false;
+  buttonStates.value[floor].down = false;
+
   if (elevatorSound.value) {
-    elevatorSound.value.currentTime = 0
-    elevatorSound.value.play().catch(err => console.warn('Autoplay blocked:', err))
+    elevatorSound.value.currentTime = 0;
+    elevatorSound.value.play().catch(err => console.warn('Autoplay blocked:', err));
   }
+}
+
+function hasUpRequestsAbove(currFloor) {
+  return floorRequests.value.some(floor => floor > currFloor);
+}
+
+function hasDownRequestsBelow(currFloor) {
+  return floorRequests.value.some(floor => floor < currFloor);
+}
+
+function getCurrentDirection() {
+  // Determine the current direction based on the next request in the queue
+  if (floorRequests.value.length === 0) return 0; // No direction
+  const nextFloor = floorRequests.value[0];
+  return nextFloor > currentFloor.value ? 1 : -1; // 1 for up, -1 for down
 }
 
 function simulateElevator() {
   setInterval(() => {
     if (floorRequests.value.length === 0) return;
 
-    const targetFloor = floorRequests.value[0];
+    const dir = getCurrentDirection(); // Get the current direction of the elevator
+    const currFloor = currentFloor.value;
 
-    // Move directly to the target floor
-    currentFloor.value = targetFloor;
-    moveToFloor(currentFloor.value);
-
-    // Remove the floor from the queue once reached
-    if (currentFloor.value === targetFloor) {
-      floorRequests.value.shift();
+    if (dir === 1) { // Moving up
+      if (hasUpRequestsAbove(currFloor)) {
+        // Serve all "up" requests above the current floor
+        for (let i = currFloor + 1; i < totalFloors; i++) {
+          if (floorRequests.value.includes(i)) {
+            moveToFloor(i);
+            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          }
+        }
+      } else if (hasDownRequestsBelow(currFloor)) {
+        // Switch to "down" direction and serve all "down" requests
+        for (let i = currFloor - 1; i >= 0; i--) {
+          if (floorRequests.value.includes(i)) {
+            moveToFloor(i);
+            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          }
+        }
+      }
+    } else if (dir === -1) { // Moving down
+      if (hasDownRequestsBelow(currFloor)) {
+        // Serve all "down" requests below the current floor
+        for (let i = currFloor - 1; i >= 0; i--) {
+          if (floorRequests.value.includes(i)) {
+            moveToFloor(i);
+            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          }
+        }
+      } else if (hasUpRequestsAbove(currFloor)) {
+        // Switch to "up" direction and serve all "up" requests
+        for (let i = currFloor + 1; i < totalFloors; i++) {
+          if (floorRequests.value.includes(i)) {
+            moveToFloor(i);
+            floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          }
+        }
+      }
     }
   }, 3000); // Keep the interval for animation timing
 }
@@ -126,6 +187,10 @@ function startElevator() {
   color: white;
   border: none;
   border-radius: 6px;
+}
+.btn.btn-pressed {
+  background-color: grey !important; /* Ensure it overrides other styles */
+  cursor: not-allowed;
 }
 
 .elevator-shaft {
