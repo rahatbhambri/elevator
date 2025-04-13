@@ -7,6 +7,10 @@
     </button>
 
     <div v-else class="elevator-shaft">
+      <!-- Ropes/Wires -->
+      <div class="rope left-rope"></div>
+      <div class="rope right-rope"></div>
+
       <div
         v-for="floor in [...Array(totalFloors).keys()].reverse()"
         :key="floor"
@@ -19,33 +23,37 @@
             <button
               v-if="totalFloors - 1 - floor === totalFloors - 1"
               @click="pressButton('down', totalFloors - 1 - floor)"
-              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
+              :class="{ 'btn-pressed': buttonStates[totalFloors - 1 - floor].down }"
               class="btn"
             >
               ↓
             </button>
-    
+
             <button
               v-if="totalFloors - 1 - floor === 0"
               @click="pressButton('up', totalFloors - 1 - floor)"
-              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
+              :class="{ 'btn-pressed': buttonStates[totalFloors - 1 - floor].up }"
               class="btn"
             >
               ↑
             </button>
-    
+
             <button
-              v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
+              v-if="
+                totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1
+              "
               @click="pressButton('up', totalFloors - 1 - floor)"
-              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].up}"
+              :class="{ 'btn-pressed': buttonStates[totalFloors - 1 - floor].up }"
               class="btn"
             >
               ↑
             </button>
             <button
-              v-if="totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1"
+              v-if="
+                totalFloors - 1 - floor > 0 && totalFloors - 1 - floor < totalFloors - 1
+              "
               @click="pressButton('down', totalFloors - 1 - floor)"
-              :class="{'btn-pressed': buttonStates[totalFloors - 1 - floor].down}"
+              :class="{ 'btn-pressed': buttonStates[totalFloors - 1 - floor].down }"
               class="btn"
             >
               ↓
@@ -53,9 +61,19 @@
           </div>
         </div>
       </div>
-    
+
       <!-- Elevator -->
-      <div class="elevator" @click="toggleBox" :style="{ bottom: elevatorPosition + 'px' }">
+      <div
+        class="elevator"
+        @click="toggleBox"
+        :style="{ bottom: elevatorPosition + 'px' }"
+      >
+        <!-- Left Door -->
+        <div class="left-door" :class="{ 'door-open': doorsOpen }"></div>
+
+        <!-- Right Door -->
+        <div class="right-door" :class="{ 'door-open': doorsOpen }"></div>
+
         <!-- Box with floor buttons -->
         <div v-if="isBoxVisible" class="floor-box">
           <button
@@ -70,24 +88,27 @@
       </div>
     </div>
 
-    <audio ref="elevatorSound" src="/grrr.mp3" preload="auto" />
+    <!-- <audio ref="elevatorSound" :src="elevatorSoundFile" preload="auto" /> -->
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue";
+// import elevatorSoundFile from "@/assets/el.mp3";
 
-const totalFloors = 5
+const totalFloors = 5;
+// const elevatorSound = ref(new Audio(elevatorSoundFile));
 // const floorHeight = 100
-const currentFloor = ref(0)
-const elevatorPosition = ref(0)
-const elevatorSound = ref(null)
-const started = ref(false)
+const currentFloor = ref(0);
+const elevatorPosition = ref(0);
+const started = ref(false);
 
-const floorRequests = ref([])
+const floorRequests = ref([]);
 const buttonStates = ref(
   Array.from({ length: totalFloors }, () => ({ up: false, down: false }))
 );
+const doorsOpen = ref(false); // Tracks whether the doors are open
+const isBoxVisible = ref(false); // Tracks whether the box is visible
 
 function pressButton(dir, floor) {
   if (!floorRequests.value.includes(floor)) {
@@ -96,38 +117,44 @@ function pressButton(dir, floor) {
   }
 
   // Mark the button as pressed
-  if (dir === 'up') {
+  if (dir === "up") {
     buttonStates.value[floor].up = true;
-  } else if (dir === 'down') {
+  } else if (dir === "down") {
     buttonStates.value[floor].down = true;
   }
 }
 
-const isBoxVisible = ref(false); // Tracks whether the box is visible
-
 function toggleBox() {
   isBoxVisible.value = !isBoxVisible.value; // Correctly toggle the visibility of the box
 }
-
 function goToFloor(floor) {
-  currentFloor.value = floor; // Update the current floor
+  // Close the doors before moving
+  doorsOpen.value = false;
+
+  // Update the current floor and elevator position
+  currentFloor.value = floor;
   elevatorPosition.value = floor * 100; // Update the elevator's position (assuming each floor is 100px apart)
 
-  // Play elevator sound if available
-  if (elevatorSound.value) {
-    elevatorSound.value.currentTime = 0;
-    elevatorSound.value.play().catch(err => console.warn('Autoplay blocked:', err));
-  }
+  // // Play elevator sound if available
+  // if (elevatorSound.value) {
+  //   elevatorSound.value.currentTime = 0;
+  //   elevatorSound.value.play().catch((err) => console.warn("Autoplay blocked:", err));
+  // }
+
+  // Open the doors for 1 second after reaching the floor
+  setTimeout(() => {
+    doorsOpen.value = true;
+    setTimeout(() => {
+      doorsOpen.value = false; // Close the doors after 1 second
+    }, 1000);
+  }, 1000); // Delay to simulate the elevator reaching the floor
 
   // Reset button states for the current floor
   buttonStates.value[floor].up = false;
   buttonStates.value[floor].down = false;
 
-  // Close the box after selecting a floor
-  isBoxVisible.value = false;
-
   // Remove the floor from the request queue
-  floorRequests.value = floorRequests.value.filter(f => f !== floor);
+  floorRequests.value = floorRequests.value.filter((f) => f !== floor);
 }
 
 function getCurrentDirection() {
@@ -144,19 +171,21 @@ function simulateElevator() {
     const dir = getCurrentDirection(); // Get the current direction of the elevator
     const currFloor = currentFloor.value;
 
-    if (dir === 1) { // Moving up
+    if (dir === 1) {
+      // Moving up
       for (let i = currFloor + 1; i < totalFloors; i++) {
         if (floorRequests.value.includes(i)) {
           goToFloor(i); // Move to the next requested floor
-          floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          floorRequests.value = floorRequests.value.filter((f) => f !== i); // Remove served floor
           break; // Stop after serving one floor
         }
       }
-    } else if (dir === -1) { // Moving down
+    } else if (dir === -1) {
+      // Moving down
       for (let i = currFloor - 1; i >= 0; i--) {
         if (floorRequests.value.includes(i)) {
           goToFloor(i); // Move to the next requested floor
-          floorRequests.value = floorRequests.value.filter(f => f !== i); // Remove served floor
+          floorRequests.value = floorRequests.value.filter((f) => f !== i); // Remove served floor
           break; // Stop after serving one floor
         }
       }
@@ -164,12 +193,29 @@ function simulateElevator() {
   }, 3000); // Keep the interval for animation timing
 }
 function startElevator() {
-  started.value = true
-  simulateElevator()
+  started.value = true;
+  simulateElevator();
 }
 </script>
 
 <style scoped>
+.rope {
+  position: absolute;
+  top: 0;
+  width: 4px; /* Thickness of the rope */
+  height: 100%; /* Extend to the roof */
+  background-color: #555; /* Rope color */
+  z-index: 1; /* Place behind the elevator */
+}
+
+.left-rope {
+  left: 45%; /* Position the left rope slightly to the left of the elevator */
+}
+
+.right-rope {
+  left: 55%; /* Position the right rope slightly to the right of the elevator */
+}
+
 .container {
   text-align: center;
   padding: 20px;
@@ -271,5 +317,33 @@ function startElevator() {
 
 .floor-btn:hover {
   background-color: #1976d2;
+}
+.left-door,
+.right-door {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%; /* Each door takes half the width of the elevator */
+  background-color: #333;
+  transition: transform 1s ease-in-out; /* Smooth door animation */
+  z-index: 5;
+}
+
+.left-door {
+  left: 0;
+  transform: translateX(0); /* Closed position */
+}
+
+.right-door {
+  right: 0;
+  transform: translateX(0); /* Closed position */
+}
+
+.door-open.left-door {
+  transform: translateX(-100%); /* Open position for the left door */
+}
+
+.door-open.right-door {
+  transform: translateX(100%); /* Open position for the right door */
 }
 </style>

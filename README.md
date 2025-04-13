@@ -1,5 +1,9 @@
 # elevator
 
+A simple elevator simulator which follows momentum first strategy made using Vue
+
+![Demo](src/assets/demo.gif)
+
 ## Project setup
 ```
 npm install
@@ -22,3 +26,7 @@ npm run lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+
+
+
